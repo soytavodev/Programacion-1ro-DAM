@@ -1,0 +1,41 @@
+Programa Suma dos números v0.1
+
+Gustavo Delnardo
+
+---
+En el desarrollo de videojuegos y otras aplicaciones las funciones son pequeños bloques de codigo que se usan para realizar una tarea en especifico, por ejemplo, calculos matemáticos. Estas nos permiten evitar repetir lineas y lograr asi que al leer el código sea mucho mas cómodo y se note mas limpio. Una vez han sido creadas, pueden ser llamadas por su nombre cuantas veces sea necesario para realizar la tarea para la que se creó.
+
+```
+#Las funciones deben escribirse en camelCase y tener parametros de entrada, en este caso 2
+
+def calculaSuma(num1,num2):				
+	resultado = num1+num2
+	return resultado							                  
+	
+	#Y tener una salida con return, ya que, deben evitarse los print dentro de una función.
+	
+print(calculaSuma (4,3))
+```
+
+---
+
+En el ejercicio, creamos un script independiente para mantener mas organizado el programa, llamando asi a la funcion cuando se necesite, por ejemplo:
+
+```
+from misfunciones import calculaSuma
+print(calculaSuma(4,3))
+```
+
+```
+from misfunciones import calculaSuma
+print(calculaSuma(5,5))
+```
+
+```
+from misfunciones import calculaSuma
+print(calculaSuma(10,30))
+```
+
+En conclusión, las funciones y los scripts independientes nos permiten controlar y manejar diversas actividades en nuestro programa. De esta forma, en el mundo de los videojuegos, por ejemplo, se individualizan tareas como el movimiento del personaje, el sonido del videojuego. Es importante dominar estas prácticas para aplicarlas sobre todo en proyectos complejos para que al momento de leerlos sean mucho mas entendibles.
+
+
