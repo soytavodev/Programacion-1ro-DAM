@@ -27,8 +27,8 @@ La cantidad que ha pedido es:<br>
 
 <?php
 	$host = "localhost";
-  $user = "Gustavo";
-  $pass = "Hakaishin2.";
+  $user = "tiendaonlinedamdaw";
+  $pass = "Tiendaonlinedamdaw123$";
   $db   = "tiendaonlinedamdaw";
 
   $conexion = new mysqli($host, $user, $pass, $db);
@@ -82,11 +82,6 @@ La cantidad que ha pedido es:<br>
 ?>
 
 <?php include "inc/piedepagina.php"; ?>
-
-
-
-
-
 
 
 

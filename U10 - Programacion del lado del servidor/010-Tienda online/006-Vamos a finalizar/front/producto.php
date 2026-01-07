@@ -4,8 +4,8 @@
 
     <?php
       $host = "localhost";
-      $user = "Gustavo";
-      $pass = "Hakaishin2.";
+      $user = "tiendaonlinedamdaw";
+      $pass = "Tiendaonlinedamdaw123$";
       $db   = "tiendaonlinedamdaw";
 
       $conexion = new mysqli($host, $user, $pass, $db);
@@ -16,7 +16,7 @@
       while ($fila = $resultado->fetch_assoc()) {
     ?>
       <article>
-        <div class="imagen" style="background:url(img/hasbulla.jpg);background-size:cover;"></div>
+        <div class="imagen" style="background:url(img/producto.jpg);background-size:cover;"></div>
         <p><?= $fila['precio'] ?></p>
         <form action="carrito.php" method="POST">
         	<input type="hidden" name="id" value="<?= $fila['id'] ?>">
@@ -26,8 +26,9 @@
       </article>
       <article>
       	<h3><?= $fila['nombre_producto'] ?></h3>
-        <p><?= $fila['descripcion'] ?></p>
-      </article
+        <h4><?= $fila['descripcion'] ?></h4>
+        <p><?= $fila['descripcion_larga'] ?></p>
+      </article>
     <?php
         }
 
@@ -42,12 +43,12 @@
     gap:20px;
   }
   #paginaproducto article{
-  	text-align:center;
+  	text-align:justify;
     flex:1;
   }
   #paginaproducto article .imagen{
   	background:darkorchid;
-    height:100px;
+    height:300px;
     border-radius:5px 5px 0px 0px;
   }
   #paginaproducto article a{
@@ -60,11 +61,6 @@
 </style>
 
 <?php include "inc/piedepagina.php"; ?>
-
-
-
-
-
 
 
 

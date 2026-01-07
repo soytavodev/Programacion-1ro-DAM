@@ -28,4 +28,3 @@ Vamos a ver si atrapamos correctamente el producto<br>
 
 
 
-

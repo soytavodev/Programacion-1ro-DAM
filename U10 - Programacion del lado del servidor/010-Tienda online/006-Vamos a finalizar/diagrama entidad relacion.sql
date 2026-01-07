@@ -35,4 +35,3 @@ CREATE TABLE lineaspedido (
   CONSTRAINT fk_lineaspedido_1 FOREIGN KEY (producto_id) REFERENCES producto(id),
   CONSTRAINT fk_lineaspedido_2 FOREIGN KEY (pedido_id) REFERENCES pedido(id)
 );
-

@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="es">
 	<head>
-  	<title>Tienda de Tavo, el viejo sabroso</title>
-     <meta charset="utf-8">
-     <link rel="stylesheet" href="css/estilo.css">
+  	<title>Tienda jocarsa</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="css/estilo.css">
   </head>
   <body>
   	<header>
-    	<h1>Tienda de Tavo, el viejo sabroso</h1>
+    	<h1>Tienda jocarsa</h1>
       <h2>Tienda en clase</h2>
-     <nav>
+      <nav>
       	<ul>
         	<li>
           	<a href="catalogo.php">Catálogo</a>
@@ -18,7 +18,8 @@
       </nav>
     </header>
     <main>
-
+    
+    
 <style>
 	header{
   	text-align:center;
