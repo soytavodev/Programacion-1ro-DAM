@@ -47,8 +47,8 @@
     	<section>
       	<?php
           $host = "localhost";
-          $user = "camaron";
-          $pass = "Camaron123$";
+          $user = "Gustavo";
+          $pass = "Hakaishin2.";
           $db   = "camaron";
 
           $conexion = new mysqli($host, $user, $pass, $db);
