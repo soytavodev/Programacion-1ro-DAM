@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Predator vs Prey - Seek & Flee</title>
+    <style>
+      html, body { margin:0; padding:0; background:#0a0a0a; overflow: hidden; }
+      canvas { display:block; margin:0 auto; background:#1a1a1a; }
+      #ui { position: absolute; top: 10px; left: 10px; color: #888; font-family: monospace; }
+    </style>
+  </head>
+  <body>
+    <div id="ui">SIMULATION: SEEK_AND_FLEE_V1</div>
+    <canvas></canvas>
+
+    <script>
+      // =========================================================
+      // CONFIGURACIÓN ESTRATÉGICA
+      // =========================================================
+      const lienzo = document.querySelector("canvas");
+      const ctx = lienzo.getContext("2d");
+
+      let W = window.innerWidth;
+      let H = window.innerHeight;
+      lienzo.width = W; lienzo.height = H;
+
+      // Ajustes de la simulación
+      const PREDATOR_COUNT = 5;       // Cantidad de entidades dominantes
+      const PREY_COUNT = 150;         // Cantidad de entidades huidizas
+
+      // Físicas
+      const PREDATOR_SPEED = 2.0;
+      const PREY_SPEED = 3.5;         // Las presas deben ser más rápidas para tener oportunidad
+      const PREY_SENSE_RADIUS = 150;  // Distancia a la que la presa detecta el peligro
+
+      // Crecimiento
+      const GROWTH_PER_EAT = 1.5;     // Cuanto crece el radio al comer
+      const WRINKLE_FACTOR = 0.5;     // Cuanto se "arruga" al comer
+
+      // =========================================================
+      // UTILIDADES MATEMÁTICAS
+      // =========================================================
+      const rand = (min, max) => Math.random() * (max - min) + min;
+
+      class Vector {
+        constructor(x, y) { this.x = x; this.y = y; }
+        add(v) { this.x += v.x; this.y += v.y; }
+        sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+        mult(n) { this.x *= n; this.y *= n; }
+        mag() { return Math.sqrt(this.x*this.x + this.y*this.y); }
+        normalize() {
+          let m = this.mag();
+          if (m !== 0) { this.mult(1/m); }
+        }
+        limit(max) {
+          if (this.mag() > max) {
+            this.normalize();
+            this.mult(max);
+          }
+        }
+      }
+
+      // =========================================================
+      // CLASES
+      // =========================================================
+
+      // --- LA PRESA (Lo que huye) ---
+      class Prey {
+        constructor() {
+          this.pos = new Vector(rand(0, W), rand(0, H));
+          this.vel = new Vector(rand(-1, 1), rand(-1, 1));
+          this.acc = new Vector(0, 0);
+          this.maxSpeed = PREY_SPEED;
+          this.maxForce = 0.2; // Agilidad de giro
+          this.active = true;
+        }
+
+        flee(predators) {
+          let closest = null;
+          let closestD = Infinity;
+
+          // Buscar el peligro más cercano
+          for (let p of predators) {
+            let d = Math.hypot(p.pos.x - this.pos.x, p.pos.y - this.pos.y);
+            if (d < closestD) {
+              closestD = d;
+              closest = p;
+            }
+          }
+
+          // Si está dentro del radio de pánico, huir
+          if (closest && closestD < PREY_SENSE_RADIUS + closest.radius) {
+            let desired = this.pos.sub(closest.pos); // Vector opuesto
+            desired.normalize();
+            desired.mult(this.maxSpeed);
+            
+            let steer = desired.sub(this.vel);
+            steer.limit(this.maxForce);
+            this.acc.add(steer);
+          } else {
+            // Movimiento errático si no hay peligro (Wander)
+            if(Math.random() < 0.05) {
+                this.vel = new Vector(rand(-1,1), rand(-1,1));
+                this.vel.normalize();
+                this.vel.mult(this.maxSpeed * 0.5);
+            }
+          }
+        }
+
+        update() {
+          this.vel.add(this.acc);
+          this.vel.limit(this.maxSpeed);
+          this.pos.add(this.vel);
+          this.acc.mult(0); // Reset aceleración
+
+          // Bordes (Rebote simple)
+          if (this.pos.x < 0 || this.pos.x > W) this.vel.x *= -1;
+          if (this.pos.y < 0 || this.pos.y > H) this.vel.y *= -1;
+        }
+
+        draw() {
+          ctx.fillStyle = "#4deeea";
+          ctx.beginPath();
+          ctx.arc(this.pos.x, this.pos.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // --- EL DEPREDADOR (Lo que persigue y crece) ---
+      class Predator {
+        constructor() {
+          this.pos = new Vector(rand(0, W), rand(0, H));
+          this.vel = new Vector(0, 0);
+          this.radius = 20; 
+          this.wrinkleOffset = 0; // Para animación de "arrugas"
+          this.score = 0;
+        }
+
+        seek(preyList) {
+          let closest = null;
+          let closestD = Infinity;
+
+          // Buscar comida más cercana
+          for (let p of preyList) {
+            if (!p.active) continue;
+            let d = Math.hypot(p.pos.x - this.pos.x, p.pos.y - this.pos.y);
+            if (d < closestD) {
+              closestD = d;
+              closest = p;
+            }
+          }
+
+          if (closest) {
+            // Algoritmo de persecución
+            let target = new Vector(closest.pos.x, closest.pos.y);
+            let desired = target.sub(this.pos);
+            
+            desired.normalize();
+            desired.mult(PREDATOR_SPEED); // Velocidad constante
+
+            // Movimiento suave hacia el objetivo
+            this.vel = desired;
+            
+            // Colisión (Comer)
+            if (closestD < this.radius + 5) {
+              closest.active = false; // Presa muerta
+              this.grow();
+            }
+          } else {
+            this.vel.mult(0.9); // Frenar si no hay comida
+          }
+        }
+
+        grow() {
+          this.score++;
+          this.radius += GROWTH_PER_EAT;
+        }
+
+        update() {
+          this.pos.add(this.vel);
+          // Mantener dentro de pantalla
+          if (this.pos.x < 0) this.pos.x = W;
+          if (this.pos.x > W) this.pos.x = 0;
+          if (this.pos.y < 0) this.pos.y = H;
+          if (this.pos.y > H) this.pos.y = 0;
+          
+          this.wrinkleOffset += 0.05; // Animar el ruido
+        }
+
+        draw() {
+          ctx.fillStyle = "#e05a8d"; // Color rosado/carne
+          ctx.strokeStyle = "#a62c55";
+          ctx.lineWidth = 2;
+          
+          ctx.beginPath();
+          // Dibujar círculo deformado (Arrugas)
+          // Usamos ruido senoidal simple basado en el ángulo
+          const steps = 30 + this.score * 2; // Más vértices al crecer
+          for (let i = 0; i <= steps; i++) {
+            let theta = (i / steps) * Math.PI * 2;
+            
+            // La deformación aumenta con el tamaño (score)
+            let deform = Math.sin(theta * (5 + this.score) + this.wrinkleOffset) * (this.score * WRINKLE_FACTOR);
+            // Añadir un poco de aleatoriedad
+            deform += Math.cos(theta * 10) * (this.score * 0.2);
+
+            let r = this.radius + deform;
+            let x = this.pos.x + Math.cos(theta) * r;
+            let y = this.pos.y + Math.sin(theta) * r;
+
+            if (i===0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Texto de conteo dentro
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(this.score, this.pos.x, this.pos.y + 4);
+        }
+      }
+
+      // =========================================================
+      // MOTOR
+      // =========================================================
+      let predators = [];
+      let preys = [];
+
+      function init() {
+        predators = [];
+        preys = [];
+        for (let i = 0; i < PREDATOR_COUNT; i++) predators.push(new Predator());
+        for (let i = 0; i < PREY_COUNT; i++) preys.push(new Prey());
+      }
+
+      function loop() {
+        // Limpiar fondo con estela suave (blur)
+        ctx.fillStyle = "rgba(26, 26, 26, 0.3)";
+        ctx.fillRect(0, 0, W, H);
+
+        // Lógica Presas
+        // Filtrar muertas primero para optimizar
+        preys = preys.filter(p => p.active);
+        
+        // Reaparecer presas si quedan pocas (opcional, para mantener el ciclo)
+        if (preys.length < 20) {
+             preys.push(new Prey());
+        }
+
+        for (let p of preys) {
+          p.flee(predators);
+          p.update();
+          p.draw();
+        }
+
+        // Lógica Depredadores
+        for (let pred of predators) {
+          pred.seek(preys);
+          pred.update();
+          pred.draw();
+        }
+
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('resize', () => {
+        W = window.innerWidth; H = window.innerHeight;
+        lienzo.width = W; lienzo.height = H;
+      });
+
+      init();
+      loop();
+
+    </script>
+  </body>
+</html>

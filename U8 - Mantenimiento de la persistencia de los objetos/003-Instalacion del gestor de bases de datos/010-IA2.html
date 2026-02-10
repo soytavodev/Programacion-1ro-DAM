@@ -1,0 +1,511 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Ecosystem: Fish, Shrimp & Shark</title>
+    <style>
+      /* Fondo de agua profunda */
+      html, body { margin:0; padding:0; background:#001a33; overflow: hidden; }
+      canvas { display:block; margin:0 auto; background: radial-gradient(circle at center top, #004d99 0%, #001a33 80%); }
+      #ui { 
+        position: absolute; top: 10px; left: 10px; 
+        color: #8ab; font-family: monospace; font-size: 14px; 
+        pointer-events: none; text-shadow: 1px 1px 2px black;
+        background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui">
+      <div>SIMULATION: BALANCED_ECOSYSTEM</div>
+      <div id="status">Loading...</div>
+    </div>
+    <canvas></canvas>
+
+    <script>
+      const lienzo = document.querySelector("canvas");
+      const ctx = lienzo.getContext("2d");
+      const uiStatus = document.getElementById("status");
+      let W, H;
+
+      // =========================================================
+      // CONFIGURACIÓN DEL ECOSISTEMA
+      // =========================================================
+      const FISH_COUNT = 12;
+      const SHRIMP_COUNT = 100;
+
+      // Velocidades y Físicas
+      const FISH_SPEED = 2.5;
+      const FISH_AGILITY = 0.12;
+      
+      const SHRIMP_WANDER_SPEED = 0.8;
+      const SHRIMP_FLEE_SPEED = 3.0;
+      const SHRIMP_PANIC_RADIUS = 100;
+
+      const SHARK_SPEED = 3.8;
+      const SHARK_HUNT_TIME = 600; // ~10 segundos
+
+      // Mecánicas de Suciedad
+      let toxicity = 0; // 0 a 100
+      const POOP_PER_EAT = 5.0;     // Cuánto ensucia un pez al comer
+      const SHRIMP_CLEAN_RATE = 0.02; // Cuánto limpia un camarón por frame
+
+      // =========================================================
+      // UTILIDADES VECTORIALES
+      // =========================================================
+      const rand = (min, max) => Math.random() * (max - min) + min;
+      class Vector {
+        constructor(x, y) { this.x = x; this.y = y; }
+        add(v) { this.x += v.x; this.y += v.y; }
+        sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+        mult(n) { this.x *= n; this.y *= n; }
+        mag() { return Math.sqrt(this.x*this.x + this.y*this.y); }
+        normalize() { let m = this.mag(); if (m !== 0) this.mult(1/m); }
+        limit(max) { if (this.mag() > max) { this.normalize(); this.mult(max); }}
+      }
+
+      // =========================================================
+      // CLASE CAMARÓN (Limpiador / Presa)
+      // =========================================================
+      class Shrimp {
+        constructor() {
+          this.pos = new Vector(rand(0, W), rand(0, H));
+          this.vel = new Vector(rand(-1, 1), rand(-1, 1));
+          this.acc = new Vector(0,0);
+          this.maxSpeed = SHRIMP_WANDER_SPEED;
+          this.active = true;
+          this.swimmingPhase = Math.random();
+        }
+
+        update(predators) {
+          if (!this.active) return;
+
+          // 1. LIMPIAR EL AGUA (Mecánica nueva)
+          if (toxicity > 0) toxicity -= SHRIMP_CLEAN_RATE;
+
+          // 2. DETECTAR PECES
+          let closest = null;
+          let closestD = Infinity;
+          
+          for (let p of predators) {
+            if (!p.active) continue;
+            let d = Math.hypot(p.pos.x - this.pos.x, p.pos.y - this.pos.y);
+            if (d < closestD) { closestD = d; closest = p; }
+          }
+
+          if (closest && closestD < SHRIMP_PANIC_RADIUS) {
+            // Huir
+            this.maxSpeed = SHRIMP_FLEE_SPEED;
+            let desired = this.pos.sub(closest.pos);
+            desired.normalize();
+            desired.mult(this.maxSpeed);
+            let steer = desired.sub(this.vel);
+            steer.limit(0.3);
+            this.acc.add(steer);
+          } else {
+            // Deambular
+            this.maxSpeed = SHRIMP_WANDER_SPEED;
+            if(Math.random() < 0.05) {
+                 let wander = new Vector(rand(-1,1), rand(-1,1));
+                 wander.normalize();
+                 wander.mult(0.5);
+                 this.acc.add(wander);
+            }
+          }
+
+          // Físicas
+          this.vel.add(this.acc);
+          this.vel.limit(this.maxSpeed);
+          this.pos.add(this.vel);
+          this.acc.mult(0);
+
+          // Mundo toroidal
+          if (this.pos.x < 0) this.pos.x = W; if (this.pos.x > W) this.pos.x = 0;
+          if (this.pos.y < 0) this.pos.y = H; if (this.pos.y > H) this.pos.y = 0;
+          
+          this.swimmingPhase += 0.2;
+        }
+
+        draw() {
+          if (!this.active) return;
+          let angle = Math.atan2(this.vel.y, this.vel.x);
+          ctx.save();
+          ctx.translate(this.pos.x, this.pos.y);
+          ctx.rotate(angle);
+          
+          // Mismo estilo visual que te gustaba
+          ctx.fillStyle = "#ff9966";
+          ctx.beginPath();
+          ctx.moveTo(4, 0);
+          ctx.quadraticCurveTo(0, -3, -4, 0);
+          ctx.quadraticCurveTo(0, 3, 4, 0);
+          ctx.fill();
+          
+          ctx.strokeStyle = "#ffcc99";
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(3, -1); ctx.lineTo(7, -3);
+          ctx.moveTo(3, 1); ctx.lineTo(7, 3);
+          ctx.stroke();
+          
+          let legWiggle = Math.sin(this.swimmingPhase) * 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-2, 2); ctx.lineTo(-2 + legWiggle, 4);
+          ctx.moveTo(0, 2); ctx.lineTo(0 - legWiggle, 4);
+          ctx.moveTo(-2, -2); ctx.lineTo(-2 + legWiggle, -4);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      // =========================================================
+      // CLASE PEZ (Contaminador / Presa del Tiburón)
+      // =========================================================
+      class Fish {
+        constructor() {
+          this.pos = new Vector(rand(0, W), rand(0, H));
+          this.vel = new Vector(rand(-1,1), rand(-1,1));
+          this.acc = new Vector(0,0);
+          this.tailWiggle = Math.random() * Math.PI * 2;
+          this.eatenCount = 0;
+          this.scale = 1.0; 
+          this.active = true;
+          // COLOR ALEATORIO (HUE 0-360)
+          this.hue = Math.random() * 360; 
+        }
+
+        update(preyList, shark) {
+          if (!this.active) return;
+
+          // 1. HUIR DEL TIBURÓN (Prioridad)
+          if (shark.active) {
+            let dShark = Math.hypot(shark.pos.x - this.pos.x, shark.pos.y - this.pos.y);
+            if (dShark < 200) {
+               let flee = this.pos.sub(shark.pos);
+               flee.normalize();
+               flee.mult(FISH_SPEED * 1.5);
+               let steer = flee.sub(this.vel);
+               steer.limit(0.4);
+               this.acc.add(steer);
+            }
+          }
+
+          // 2. CAZAR CAMARONES
+          let closest = null;
+          let closestD = Infinity;
+
+          for (let shrimp of preyList) {
+            if (!shrimp.active) continue;
+            let d = Math.hypot(shrimp.pos.x - this.pos.x, shrimp.pos.y - this.pos.y);
+            if (d < closestD) { closestD = d; closest = shrimp; }
+          }
+
+          if (closest && closestD < 200) {
+            let desired = closest.pos.sub(this.pos);
+            desired.normalize();
+            desired.mult(FISH_SPEED + this.scale * 0.1); 
+            let steer = desired.sub(this.vel);
+            steer.limit(FISH_AGILITY);
+            this.acc.add(steer);
+
+            // Comer y Cagar
+            let biteRadius = 8 * this.scale;
+            if (closestD < biteRadius) {
+              closest.active = false;
+              this.eatenCount++;
+              this.scale = 1.0 + (this.eatenCount * 0.05);
+              // AUMENTAR TOXICIDAD
+              toxicity += POOP_PER_EAT;
+              if (toxicity > 100) toxicity = 100;
+            }
+          } else {
+             // Nadar tranquilo
+             if(Math.random()<0.02) this.acc.add(new Vector(rand(-0.5,0.5), rand(-0.5,0.5)));
+          }
+
+          this.vel.add(this.acc);
+          this.vel.limit(FISH_SPEED + this.scale*0.2);
+          this.pos.add(this.vel);
+          this.acc.mult(0);
+
+          if (this.pos.x < -20) this.pos.x = W+20; if (this.pos.x > W+20) this.pos.x = -20;
+          if (this.pos.y < -20) this.pos.y = H+20; if (this.pos.y > H+20) this.pos.y = -20;
+          
+          this.tailWiggle += 0.2;
+        }
+
+        draw() {
+          if (!this.active) return;
+          let angle = Math.atan2(this.vel.y, this.vel.x);
+          ctx.save();
+          ctx.translate(this.pos.x, this.pos.y);
+          ctx.rotate(angle);
+          ctx.scale(this.scale, this.scale); 
+
+          // --- DIBUJO DEL PEZ (Estilo original pero con color variable) ---
+          
+          // Cola
+          ctx.beginPath();
+          ctx.moveTo(-8, 0);
+          let tailTipY = Math.sin(this.tailWiggle) * 4;
+          ctx.lineTo(-16, tailTipY - 4);
+          ctx.lineTo(-16, tailTipY + 4);
+          ctx.closePath();
+          // Color oscuro de la cola basado en el HUE
+          ctx.fillStyle = `hsl(${this.hue}, 60%, 40%)`; 
+          ctx.fill();
+
+          // Cuerpo
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI*2);
+          // Degradado dinámico
+          let grad = ctx.createLinearGradient(-10,0, 10,0);
+          grad.addColorStop(0, `hsl(${this.hue}, 60%, 40%)`);   // Cola oscura
+          grad.addColorStop(0.5, `hsl(${this.hue}, 80%, 60%)`); // Cuerpo medio
+          grad.addColorStop(1, `hsl(${this.hue}, 90%, 80%)`);   // Cabeza clara
+          ctx.fillStyle = grad;
+          ctx.fill();
+          
+          // Aleta lateral
+          ctx.beginPath();
+          ctx.ellipse(2, 3, 3, 1.5, Math.PI/4, 0, Math.PI*2);
+          ctx.fillStyle = `hsla(${this.hue}, 70%, 30%, 0.8)`;
+          ctx.fill();
+
+          // Ojo (Igual que antes)
+          ctx.beginPath();
+          ctx.arc(6, -2, 1.5, 0, Math.PI*2);
+          ctx.fillStyle = "white";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(7, -2, 0.7, 0, Math.PI*2);
+          ctx.fillStyle = "black";
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      // =========================================================
+      // CLASE TIBURÓN (El Depredador Supremo)
+      // =========================================================
+      class Shark {
+        constructor() {
+          this.reset();
+        }
+        reset() {
+          this.active = false;
+          this.pos = new Vector(-200, H/2);
+          this.vel = new Vector(0,0);
+          this.timer = 0;
+          this.spawnTimer = 500; // Tiempo hasta primera aparición
+          this.tailWiggle = 0;
+        }
+        
+        spawn() {
+          this.active = true;
+          this.timer = SHARK_HUNT_TIME;
+          // Aparecer en un lado aleatorio
+          let side = Math.random() < 0.5;
+          this.pos = new Vector(side ? -100 : W+100, rand(0, H));
+        }
+
+        update(fishList) {
+          if (!this.active) {
+            this.spawnTimer--;
+            if (this.spawnTimer <= 0) this.spawn();
+            return;
+          }
+
+          this.timer--;
+          if (this.timer <= 0) {
+            this.active = false;
+            this.spawnTimer = rand(500, 1000); // Volverá en el futuro
+            return;
+          }
+
+          // Cazar pez más cercano
+          let target = null;
+          let minD = Infinity;
+          for (let f of fishList) {
+            if (!f.active) continue;
+            let d = Math.hypot(f.pos.x - this.pos.x, f.pos.y - this.pos.y);
+            if (d < minD) { minD = d; target = f; }
+          }
+
+          let desiredVel;
+          if (target) {
+            let desired = target.pos.sub(this.pos);
+            desired.normalize();
+            desired.mult(SHARK_SPEED);
+            let steer = desired.sub(this.vel);
+            steer.limit(0.15); // Giro pesado
+            this.vel.add(steer);
+
+            // Comer
+            if (minD < 30) {
+              target.active = false; // Adiós pez
+            }
+          } else {
+             // Patrullar
+             this.vel.add(new Vector(rand(-0.1,0.1), rand(-0.1,0.1)));
+          }
+
+          this.vel.limit(SHARK_SPEED);
+          this.pos.add(this.vel);
+          this.tailWiggle += 0.15;
+        }
+
+        draw() {
+          if (!this.active) return;
+          let angle = Math.atan2(this.vel.y, this.vel.x);
+          ctx.save();
+          ctx.translate(this.pos.x, this.pos.y);
+          ctx.rotate(angle);
+          ctx.scale(2.5, 2.5); // Mucho más grande que los peces
+
+          // --- DIBUJO DEL TIBURÓN (Estilo sólido gris) ---
+          
+          // Cola
+          ctx.beginPath();
+          ctx.moveTo(-10, 0);
+          let tailTipY = Math.sin(this.tailWiggle) * 5;
+          ctx.lineTo(-20, tailTipY - 8); // Cola en forma de luna
+          ctx.lineTo(-20, tailTipY + 8);
+          ctx.closePath();
+          ctx.fillStyle = "#333";
+          ctx.fill();
+
+          // Aleta Dorsal (Triángulo arriba)
+          ctx.beginPath();
+          ctx.moveTo(-5, -5);
+          ctx.lineTo(2, -14);
+          ctx.lineTo(8, -5);
+          ctx.fillStyle = "#444";
+          ctx.fill();
+
+          // Cuerpo
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI*2);
+          let grad = ctx.createLinearGradient(-16,0, 16,0);
+          grad.addColorStop(0, "#333");
+          grad.addColorStop(0.5, "#666");
+          grad.addColorStop(1, "#999");
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Aleta lateral
+          ctx.beginPath();
+          ctx.moveTo(2, 4);
+          ctx.lineTo(-4, 12);
+          ctx.lineTo(6, 6);
+          ctx.fillStyle = "#333";
+          ctx.fill();
+
+          // Ojo amenazante
+          ctx.beginPath();
+          ctx.arc(10, -3, 1.2, 0, Math.PI*2);
+          ctx.fillStyle = "white";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(10.5, -3, 0.5, 0, Math.PI*2);
+          ctx.fillStyle = "black";
+          ctx.fill();
+
+          // Dientes (detalle pequeño)
+          ctx.fillStyle = "white";
+          ctx.beginPath();
+          ctx.moveTo(12, 2); ctx.lineTo(13, 4); ctx.lineTo(14, 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      // =========================================================
+      // MOTOR PRINCIPAL
+      // =========================================================
+      let fishs = [];
+      let shrimps = [];
+      let shark = new Shark();
+
+      function init() {
+        resize();
+        fishs = []; shrimps = [];
+        for(let i=0; i<FISH_COUNT; i++) fishs.push(new Fish());
+        for(let i=0; i<SHRIMP_COUNT; i++) shrimps.push(new Shrimp());
+      }
+
+      function loop() {
+        // 1. FONDO
+        ctx.fillStyle = "#001a33";
+        ctx.fillRect(0, 0, W, H);
+        
+        // Estela radial
+        let grad = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, H);
+        grad.addColorStop(0, "#004d99");
+        grad.addColorStop(1, "rgba(0,26,51,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,W,H);
+
+        // 2. CAPA DE SUCIEDAD (TOXICIDAD)
+        if (toxicity > 0) {
+           // Capa verdosa turbia
+           ctx.fillStyle = `rgba(40, 60, 20, ${toxicity/130})`;
+           ctx.fillRect(0, 0, W, H);
+        }
+
+        // 3. ACTUALIZAR Y DIBUJAR ENTIDADES
+        
+        // Camarones (Fondo)
+        shrimps = shrimps.filter(s => s.active);
+        // Respawn de camarones
+        if (shrimps.length < 40 && Math.random() < 0.08) shrimps.push(new Shrimp());
+        
+        for(let s of shrimps) {
+          s.update(fishs); // Huyen de los peces
+          s.draw();
+        }
+
+        // Peces
+        let activeFish = 0;
+        for(let f of fishs) {
+          f.update(shrimps, shark); // Cazan camarones, huyen del tiburón
+          f.draw();
+          if(f.active) activeFish++;
+        }
+        // Respawn de peces (lento)
+        if (activeFish < 5 && Math.random() < 0.005) fishs.push(new Fish());
+
+        // Tiburón
+        shark.update(fishs);
+        shark.draw();
+
+        // UI Text
+        let status = shark.active ? "⚠ SHARK ATTACK ⚠" : "ECOSYSTEM STABLE";
+        let color = shark.active ? "red" : "#8ab";
+        if (toxicity > 70) { status = "WARNING: HIGH TOXICITY"; color = "orange"; }
+
+        uiStatus.innerHTML = `
+           STATUS: <span style="color:${color}">${status}</span><br>
+           TOXICITY: ${toxicity.toFixed(0)}%<br>
+           SHRIMP: ${shrimps.length} (Cleaning)<br>
+           FISH: ${activeFish}
+        `;
+
+        requestAnimationFrame(loop);
+      }
+
+      function resize() {
+        W = window.innerWidth; H = window.innerHeight;
+        lienzo.width = W; lienzo.height = H;
+      }
+      window.addEventListener("resize", resize);
+
+      init();
+      loop();
+
+    </script>
+  </body>
+</html>
