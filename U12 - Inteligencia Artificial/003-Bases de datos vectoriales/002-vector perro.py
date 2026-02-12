@@ -1,5 +1,3 @@
-# ubuntu install chromadb and python support
-# now minimal example throwing the vector meaning of word perro
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -15,6 +13,5 @@ vector = model.encode(word)
 # Show results
 print("Word:", word)
 print("Vector length:", len(vector))
-print("Vector (first 1000 values):")
+print("Vector (first 10 values):")
 print(np.round(vector[:10], 6))
-

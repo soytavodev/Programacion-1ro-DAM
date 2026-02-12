@@ -34,4 +34,3 @@ curl_close($ch);
 $result = json_decode($response, true);
 
 echo $result["response"];
-

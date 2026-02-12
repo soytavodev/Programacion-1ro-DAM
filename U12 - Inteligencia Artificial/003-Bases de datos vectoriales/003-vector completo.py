@@ -17,4 +17,3 @@ print("Word:", word)
 print("Vector length:", len(vector))
 print("Vector (first 1000 values):")
 print(vector)
-

@@ -4,7 +4,7 @@ import urllib.request
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5:3b-instruct"
 
-prompt = "Explica qué es PHP. responde en ESPAÑOL."
+prompt = "Explica qué es PHP. "
 
 data = {
     "model": MODEL,
@@ -21,4 +21,3 @@ req = urllib.request.Request(
 with urllib.request.urlopen(req) as response:
     result = json.loads(response.read().decode("utf-8"))
     print(result["response"])
-
