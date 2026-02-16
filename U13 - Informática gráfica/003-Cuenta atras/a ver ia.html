@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Timer Minimalista</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+      /* RESET Y BASE */
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --primary: #38bdf8;
+        --primary-glow: rgba(56, 189, 248, 0.4);
+        --text: #f1f5f9;
+        --font-main: 'Space Grotesk', system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: var(--bg);
+        /* Patrón de fondo sutil hecho solo con CSS */
+        background-image: radial-gradient(circle at 50% 0%, #334155 0%, transparent 70%);
+        font-family: var(--font-main);
+        color: var(--text);
+        gap: 2rem; /* Espacio entre elementos */
+      }
+
+      /* ESTILO DEL CONTADOR (#tiempo) */
+      #tiempo {
+        font-size: 6rem;
+        font-weight: 700;
+        letter-spacing: -2px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums; /* Mantiene el ancho de los números constante */
+        text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        background: linear-gradient(180deg, #fff, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        position: relative;
+      }
+
+      /* ESTILO DE LA BARRA DE PROGRESO (<progress>) 
+         Es complicado estilar esto cross-browser, así que usamos prefijos */
+      progress {
+        appearance: none; /* Elimina estilo nativo feo */
+        -webkit-appearance: none;
+        border: none;
+        width: 300px;
+        height: 12px;
+        background: transparent;
+        overflow: hidden;
+        border-radius: 99px;
+        box-shadow: 0 0 0 4px var(--surface); /* Marco falso */
+      }
+
+      /* Fondo de la barra (El riel) */
+      progress::-webkit-progress-bar {
+        background-color: var(--surface);
+        border-radius: 99px;
+      }
+      
+      /* El relleno de la barra (El valor) */
+      progress::-webkit-progress-value {
+        background: linear-gradient(90deg, var(--primary), #818cf8);
+        border-radius: 99px;
+        box-shadow: 0 0 20px var(--primary-glow);
+        transition: width 1s linear; /* Suaviza el salto de 1 segundo */
+      }
+
+      /* Firefox fallback */
+      progress::-moz-progress-bar {
+        background: linear-gradient(90deg, var(--primary), #818cf8);
+        border-radius: 99px;
+      }
+
+      /* ESTILO DEL BOTÓN (<button>) */
+      button {
+        cursor: pointer;
+        padding: 16px 40px;
+        font-family: var(--font-main);
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--bg);
+        background: var(--primary);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 0 #0284c7; /* Efecto 3D sutil */
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px var(--primary-glow), 0 6px 0 #0284c7;
+      }
+
+      button:active {
+        transform: translateY(2px);
+        box-shadow: 0 0 0 #0284c7;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div id="tiempo">00:60</div>
+    <progress max="1" value="1"></progress> <button>Comenzar</button>
+    <script>
+      // Primero declaro condiciones iniciales
+      let boton = document.querySelector("button")
+      let tiempo = 60;
+      let temporizador
+      let progreso = document.querySelector("progress")
+      // Escucho cuando se pulsa el boton
+      boton.onclick = function(){
+      	temporizador = setTimeout(bucle,1000)
+      }
+      // Entro en el bucle
+      function bucle(){
+        if(tiempo > 0){
+        	tiempo--																							// Quito un segundo
+        	document.querySelector("#tiempo").textContent = "00:"+tiempo	// Actualizo marcador
+        	progreso.value = tiempo/60
+          clearTimeout(temporizador)														// Limpio temporizador
+        	temporizador = setTimeout(bucle,1000)									// Rearranco temporizador
+
+        }
+        if(tiempo == 0){
+        	let alarma = new Audio()
+          alarma.src = "pitipiti.mp3"
+          alarma.play()
+        }
+        
+      }
+    </script>
+  </body>
+</html>
