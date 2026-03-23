@@ -1,0 +1,9 @@
+Soy un agente, pero un poco tonto
+=====================================
+Archivo: /var/www/html/Programacion-1ro-DAM/U12 - Inteligencia Artificial/003-Bases de datos vectoriales/videotutoriales/t9GTF3PyWIk - 2024 09 24 18 02 36 Procesos.txt
+Resumen:
+Resumen breve del archivo:
+
+El archivo parece ser una transcripción de una conversación o sesión sobre programación, específicamente sobre multihilo y variables globales. El hablante habla sobre cómo declarar variables globales para un bloque de procesamiento (bucket) y cómo ajustar su tamaño para optimizar el rendimiento. También menciona que puede modificar la aplicación en varias partes, incluyendo variables globales y funciones. Se discute la idea de que una función es como una caja negra con entradas por parámetros y salida definida, aunque se hace excepción para simplificar la comprensión del código. El hablante explica cómo crear y modificar un lienzo con propiedades iniciales y cómo enviar datos a un worker.
+=====================================
+
